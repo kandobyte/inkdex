@@ -1,47 +1,30 @@
-import { basename } from "node:path";
-import matter from "gray-matter";
 import type { BaseChunk } from "../types.js";
+import type { MarkdownDocument } from "./mdparser.js";
 
-const OVERLAP_RATIO = 0.1;
-const SUB_SEPARATORS = [/^### /m, /\n\n/, /\. /];
+export const CHUNK_SIZE = 200;
+const TEXT_SEPARATORS = [/\n\n/, /\. (?=[A-Z])/];
 
 export interface ChunkOptions {
   readonly maxTokens: number;
   readonly countTokens: (text: string) => number;
 }
 
-function extractH1(body: string): string | null {
-  const match = body.match(/^# (.+)$/m);
-  return match ? match[1].trim() : null;
-}
-
-function clean(text: string): string {
-  return text
-    .replace(/<!--.*?-->/gs, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
-function splitWithOverlap(
+function splitOnSeparators(
   text: string,
   separators: RegExp[],
   maxTokens: number,
-  overlap: number,
   countTokens: (text: string) => number,
 ): string[] {
   if (countTokens(text) <= maxTokens) return [text];
 
-  const separator = separators[0];
-  const remaining = separators.slice(1);
+  const [separator, ...remaining] = separators;
 
   const parts = text.split(separator).filter((p) => p.trim());
   if (parts.length <= 1) {
-    // Separator didn't help — try the next one
     if (remaining.length > 0) {
-      return splitWithOverlap(text, remaining, maxTokens, overlap, countTokens);
+      return splitOnSeparators(text, remaining, maxTokens, countTokens);
     }
-    // Last resort: hard split
-    return hardSplit(text, maxTokens, overlap, countTokens);
+    return hardSplit(text, maxTokens, countTokens);
   }
 
   const chunks: string[] = [];
@@ -51,35 +34,25 @@ function splitWithOverlap(
     const combined = current ? `${current}\n\n${part}` : part;
     if (current && countTokens(combined) > maxTokens) {
       chunks.push(current.trim());
-      // Start next chunk with overlap from the end of the previous
-      const overlapText = current.slice(-overlap);
-      current = overlapText + part;
+      current = part;
     } else {
       current = combined;
     }
   }
   if (current.trim()) chunks.push(current.trim());
 
-  // Recursively split any chunks that are still too large
   return chunks.flatMap((chunk) => {
     if (countTokens(chunk) <= maxTokens) return [chunk];
     if (remaining.length > 0) {
-      return splitWithOverlap(
-        chunk,
-        remaining,
-        maxTokens,
-        overlap,
-        countTokens,
-      );
+      return splitOnSeparators(chunk, remaining, maxTokens, countTokens);
     }
-    return hardSplit(chunk, maxTokens, overlap, countTokens);
+    return hardSplit(chunk, maxTokens, countTokens);
   });
 }
 
 function hardSplit(
   text: string,
   maxTokens: number,
-  overlap: number,
   countTokens: (text: string) => number,
 ): string[] {
   const chunks: string[] = [];
@@ -90,9 +63,7 @@ function hardSplit(
     const next = current ? `${current} ${word}` : word;
     if (countTokens(next) > maxTokens && current) {
       chunks.push(current.trim());
-      // Keep overlap from end of current chunk
-      const overlapText = current.slice(-overlap);
-      current = overlapText + word;
+      current = word;
     } else {
       current = next;
     }
@@ -103,53 +74,29 @@ function hardSplit(
 }
 
 /** @package */
-export function chunkMarkdown(
-  content: string,
+export function chunkDocument(
+  doc: MarkdownDocument,
   path: string,
   options: ChunkOptions,
 ): BaseChunk[] {
   const { maxTokens, countTokens } = options;
-  const overlap = Math.floor(maxTokens * OVERLAP_RATIO);
-  const { data: metadata, content: body } = matter(content);
-  const fileHeading = extractH1(body) || basename(path, ".md");
-  const sections = body.split(/^## /m);
   const chunks: BaseChunk[] = [];
 
-  for (let i = 0; i < sections.length; i++) {
-    const section = sections[i];
-    if (!section.trim()) continue;
-
-    let heading: string;
-    let text: string;
-
-    if (i === 0) {
-      // Content before the first ## — strip the H1 line and use fileHeading
-      heading = fileHeading;
-      const withoutH1 = section.replace(/^# .+$/m, "");
-      text = clean(withoutH1);
-    } else {
-      const [headingLine, ...rest] = section.split("\n");
-      heading = headingLine.trim();
-      text = clean(rest.join("\n"));
-    }
-
-    if (!text) continue;
-
-    const subChunks = splitWithOverlap(
-      text,
-      SUB_SEPARATORS,
+  for (const section of doc.sections) {
+    const textChunks = splitOnSeparators(
+      section.text,
+      TEXT_SEPARATORS,
       maxTokens,
-      overlap,
       countTokens,
     );
 
-    for (const sub of subChunks) {
+    for (const text of textChunks) {
       chunks.push({
         path,
-        fileHeading,
-        heading,
-        text: sub,
-        metadata,
+        fileHeading: doc.fileHeading,
+        heading: section.heading,
+        text: `${section.heading}: ${text}`,
+        metadata: doc.metadata,
       });
     }
   }

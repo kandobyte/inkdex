@@ -10,9 +10,8 @@ import {
   runInTransaction,
   setDocumentHash,
 } from "../store/db.js";
-import { chunkMarkdown } from "./chunker.js";
-
-const MAX_CHUNK_FILL = 0.8;
+import { CHUNK_SIZE, chunkDocument } from "./chunker.js";
+import { parseMarkdown } from "./mdparser.js";
 
 async function findMarkdownFiles(docsPath: string): Promise<string[]> {
   const files: string[] = [];
@@ -80,15 +79,23 @@ export async function indexDocs(
     });
   }
 
+  if (CHUNK_SIZE > embedder.maxTokens) {
+    logger.warn(
+      { chunkMax: CHUNK_SIZE, modelMax: embedder.maxTokens },
+      "Chunk size exceeds embedding model context — embeddings will be truncated",
+    );
+  }
+
   const chunkOptions = {
-    maxTokens: Math.floor(embedder.maxTokens * MAX_CHUNK_FILL),
+    maxTokens: CHUNK_SIZE,
     countTokens: (text: string) => embedder.tokenize(text).length,
   };
 
   let totalChunks = 0;
   for (const key of changedKeys) {
     const content = fileContents.get(key) as string;
-    const chunks = chunkMarkdown(content, key, chunkOptions);
+    const doc = parseMarkdown(content, key);
+    const chunks = chunkDocument(doc, key, chunkOptions);
 
     logger.debug({ path: key, chunks: chunks.length }, "Embedding chunks");
     const embeddings = await embedder.embedBatch(chunks.map((c) => c.text));

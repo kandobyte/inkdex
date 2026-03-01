@@ -14,7 +14,7 @@ import {
   openDb,
 } from "../../src/store/db.js";
 
-const TEST_DIR = join(tmpdir(), "inkdex-test-index-" + process.pid);
+const TEST_DIR = join(tmpdir(), `inkdex-test-index-${process.pid}`);
 const DOCS_DIR = join(TEST_DIR, "docs");
 
 function createMockEmbedder(): Embedder {

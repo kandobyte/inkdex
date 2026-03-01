@@ -17,7 +17,7 @@ import {
   setDocumentHash,
 } from "../../src/store/db.js";
 
-const TEST_DOCS_PATH = join(tmpdir(), "inkdex-test-db-" + process.pid);
+const TEST_DOCS_PATH = join(tmpdir(), `inkdex-test-db-${process.pid}`);
 
 describe("dbPath", () => {
   it("should return the same path for the same docs directory", () => {
