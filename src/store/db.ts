@@ -13,10 +13,9 @@ export function dbPath(docsPath: string): string {
   const hash = createHash("sha256").update(docsPath).digest("hex").slice(0, 12);
   return join(STORE_DIR, `${hash}.db`);
 }
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
-const CHUNK_COLUMNS =
-  "id, document_path, file_heading, heading, text, metadata, embedding";
+const CHUNK_COLUMNS = "id, document_path, text, embedding";
 
 let db: DatabaseSync;
 
@@ -40,10 +39,7 @@ function createSchema(): void {
     CREATE TABLE IF NOT EXISTS chunks (
       id INTEGER PRIMARY KEY,
       document_path TEXT NOT NULL REFERENCES documents(path),
-      file_heading TEXT NOT NULL,
-      heading TEXT NOT NULL,
       text TEXT NOT NULL,
-      metadata TEXT NOT NULL,
       embedding BLOB NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_chunks_document ON chunks(document_path);
@@ -72,12 +68,12 @@ function prepareStatements(): void {
     deleteChunksByDoc: db.prepare("DELETE FROM chunks WHERE document_path = ?"),
     deleteDoc: db.prepare("DELETE FROM documents WHERE path = ?"),
     insertChunk: db.prepare(
-      "INSERT INTO chunks (document_path, file_heading, heading, text, metadata, embedding) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO chunks (document_path, text, embedding) VALUES (?, ?, ?)",
     ),
     getAllChunks: db.prepare(`SELECT ${CHUNK_COLUMNS} FROM chunks`),
     countChunks: db.prepare("SELECT COUNT(*) as count FROM chunks"),
     searchFts: db.prepare(
-      "SELECT rowid FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts) LIMIT ?",
+      "SELECT rowid, -bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts) LIMIT ?",
     ),
   };
 }
@@ -139,10 +135,7 @@ function blobToEmbedding(blob: Uint8Array): number[] {
 interface RawChunkRow {
   id: number;
   document_path: string;
-  file_heading: string;
-  heading: string;
   text: string;
-  metadata: string;
   embedding: Uint8Array;
 }
 
@@ -150,30 +143,17 @@ function toChunkRow(row: RawChunkRow): ChunkRow {
   return {
     id: row.id,
     path: row.document_path,
-    fileHeading: row.file_heading,
-    heading: row.heading,
     text: row.text,
-    metadata: JSON.parse(row.metadata),
     embedding: blobToEmbedding(row.embedding),
   };
 }
 
 export function insertChunk(
   documentPath: string,
-  fileHeading: string,
-  heading: string,
   text: string,
-  metadata: Record<string, unknown>,
   embedding: number[],
 ): void {
-  stmts.insertChunk.run(
-    documentPath,
-    fileHeading,
-    heading,
-    text,
-    JSON.stringify(metadata),
-    embeddingToBlob(embedding),
-  );
+  stmts.insertChunk.run(documentPath, text, embeddingToBlob(embedding));
 }
 
 export function getAllChunks(): ChunkRow[] {
@@ -188,7 +168,12 @@ export function getChunkCount(): number {
   return row.count;
 }
 
-export function searchFts(query: string, limit: number): number[] {
+export interface FtsResult {
+  id: number;
+  score: number;
+}
+
+export function searchFts(query: string, limit: number): FtsResult[] {
   // Sanitize: split into words, quote each to escape FTS5 operators
   const terms = query
     .split(/\s+/)
@@ -197,8 +182,11 @@ export function searchFts(query: string, limit: number): number[] {
     .join(" ");
   if (terms.length === 0) return [];
   try {
-    const rows = stmts.searchFts.all(terms, limit) as { rowid: number }[];
-    return rows.map((r) => r.rowid);
+    const rows = stmts.searchFts.all(terms, limit) as {
+      rowid: number;
+      score: number;
+    }[];
+    return rows.map((r) => ({ id: r.rowid, score: r.score }));
   } catch {
     // FTS5 MATCH can fail on edge-case inputs; fall back to empty
     return [];

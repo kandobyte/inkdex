@@ -105,14 +105,7 @@ export async function indexDocs(
       setDocumentHash(key, hashContent(content));
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        insertChunk(
-          chunk.path,
-          chunk.fileHeading,
-          chunk.heading,
-          chunk.text,
-          chunk.metadata,
-          embeddings[i],
-        );
+        insertChunk(chunk.path, chunk.text, embeddings[i]);
       }
     });
 

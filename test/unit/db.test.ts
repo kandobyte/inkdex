@@ -77,21 +77,18 @@ describe("db operations", () => {
   it("should insert and retrieve chunks", () => {
     setDocumentHash("doc.md", "hash1");
     const embedding = [0.1, 0.2, 0.3];
-    insertChunk("doc.md", "Doc Title", "Section", "Some text", {}, embedding);
+    insertChunk("doc.md", "Some text", embedding);
 
     const chunks = getAllChunks();
     assert.strictEqual(chunks.length, 1);
     assert.strictEqual(chunks[0].path, "doc.md");
-    assert.strictEqual(chunks[0].fileHeading, "Doc Title");
-    assert.strictEqual(chunks[0].heading, "Section");
     assert.strictEqual(chunks[0].text, "Some text");
-    assert.deepStrictEqual(chunks[0].metadata, {});
   });
 
   it("should round-trip embeddings through blob conversion", () => {
     setDocumentHash("doc.md", "hash1");
     const embedding = [0.1, 0.2, 0.3, -0.5, 1.0];
-    insertChunk("doc.md", "Title", "Heading", "text", {}, embedding);
+    insertChunk("doc.md", "text", embedding);
 
     const chunks = getAllChunks();
     assert.strictEqual(chunks[0].embedding.length, embedding.length);
@@ -103,25 +100,16 @@ describe("db operations", () => {
     }
   });
 
-  it("should preserve chunk metadata", () => {
-    setDocumentHash("doc.md", "hash1");
-    const meta = { title: "Test", version: "1.0" };
-    insertChunk("doc.md", "Title", "Heading", "text", meta, [0.1]);
-
-    const chunks = getAllChunks();
-    assert.deepStrictEqual(chunks[0].metadata, meta);
-  });
-
   it("should count chunks correctly", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "T", "H", "text1", {}, [0.1]);
-    insertChunk("doc.md", "T", "H", "text2", {}, [0.2]);
+    insertChunk("doc.md", "text1", [0.1]);
+    insertChunk("doc.md", "text2", [0.2]);
     assert.strictEqual(getChunkCount(), 2);
   });
 
   it("should remove document and its chunks", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "T", "H", "text", {}, [0.1]);
+    insertChunk("doc.md", "text", [0.1]);
 
     removeDocument("doc.md");
     assert.strictEqual(getChunkCount(), 0);
@@ -131,8 +119,8 @@ describe("db operations", () => {
   it("should only remove chunks for the specified document", () => {
     setDocumentHash("a.md", "hash1");
     setDocumentHash("b.md", "hash2");
-    insertChunk("a.md", "T", "H", "text-a", {}, [0.1]);
-    insertChunk("b.md", "T", "H", "text-b", {}, [0.2]);
+    insertChunk("a.md", "text-a", [0.1]);
+    insertChunk("b.md", "text-b", [0.2]);
 
     removeDocument("a.md");
     assert.strictEqual(getChunkCount(), 1);
@@ -141,16 +129,19 @@ describe("db operations", () => {
 
   it("should search via FTS", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "T", "H", "the quick brown fox", {}, [0.1]);
-    insertChunk("doc.md", "T", "H", "lazy sleeping dog", {}, [0.2]);
+    insertChunk("doc.md", "the quick brown fox", [0.1]);
+    insertChunk("doc.md", "lazy sleeping dog", [0.2]);
 
     const results = searchFts("quick fox", 10);
     assert.ok(results.length > 0);
+    assert.ok(typeof results[0].id === "number");
+    assert.ok(typeof results[0].score === "number");
+    assert.ok(results[0].score > 0);
   });
 
   it("should return empty for FTS with no matches", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "T", "H", "hello world", {}, [0.1]);
+    insertChunk("doc.md", "hello world", [0.1]);
 
     const results = searchFts("zzzznotfound", 10);
     assert.strictEqual(results.length, 0);
@@ -163,7 +154,7 @@ describe("db operations", () => {
 
   it("should handle FTS queries with special characters", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "T", "H", "some text", {}, [0.1]);
+    insertChunk("doc.md", "some text", [0.1]);
 
     const results = searchFts('AND OR NOT "quotes"', 10);
     assert.ok(Array.isArray(results));
@@ -172,7 +163,7 @@ describe("db operations", () => {
   it("should commit transaction on success", () => {
     setDocumentHash("doc.md", "hash1");
     runInTransaction(() => {
-      insertChunk("doc.md", "T", "H", "text", {}, [0.1]);
+      insertChunk("doc.md", "text", [0.1]);
     });
     assert.strictEqual(getChunkCount(), 1);
   });
@@ -181,7 +172,7 @@ describe("db operations", () => {
     setDocumentHash("doc.md", "hash1");
     assert.throws(() => {
       runInTransaction(() => {
-        insertChunk("doc.md", "T", "H", "text", {}, [0.1]);
+        insertChunk("doc.md", "text", [0.1]);
         throw new Error("deliberate failure");
       });
     });

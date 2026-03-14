@@ -1,7 +1,6 @@
 # Inkdex
 
-Inkdex is a MCP server that makes your markdown docs searchable for AI. Point it at your docs directory, get hybrid search (text + vector) powered by local AI embeddings.
-
+RAG for your markdown docs, exposed as an MCP tool.
 ## Tools
 
 | Tool | Description |
@@ -37,4 +36,6 @@ To expose docs remotely, use a MCP gateway like [MCPBox](https://github.com/kand
 
 ## How it works
 
-Documents are split along heading boundaries with overlap to preserve context. Chunks are embedded locally and stored in SQLite for hybrid retrieval. Indexing runs on startup and is incremental — only changed files are re-processed.
+Markdown files are parsed into sections by heading structure and split into ~200-token chunks. Each chunk is prefixed with a `<context>` preamble containing the heading path (e.g. `API Reference > Authentication`). Chunks are embedded locally using `all-MiniLM-L6-v2` and stored in SQLite.
+
+Search combines vector similarity and BM25 keyword matching using [RelativeScoreFusion](https://weaviate.io/blog/hybrid-search-fusion-algorithms).

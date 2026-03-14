@@ -1,9 +1,6 @@
 export interface BaseChunk {
   path: string;
-  fileHeading: string;
-  heading: string;
   text: string;
-  metadata: Record<string, unknown>;
 }
 
 export interface ChunkRow extends BaseChunk {

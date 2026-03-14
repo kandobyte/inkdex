@@ -13,23 +13,6 @@ describe("parseMarkdown", () => {
     assert.strictEqual(doc.fileHeading, "guide");
   });
 
-  it("should extract frontmatter", () => {
-    const md = `---
-title: Docs
-version: "2.0"
----
-
-# Title
-
-## Section
-
-Content here.
-`;
-    const doc = parseMarkdown(md, "test.md");
-    assert.strictEqual(doc.metadata.title, "Docs");
-    assert.strictEqual(doc.metadata.version, "2.0");
-  });
-
   it("should parse H2 sections", () => {
     const md = `# Doc
 
@@ -43,8 +26,8 @@ Second content.
 `;
     const doc = parseMarkdown(md, "test.md");
     assert.strictEqual(doc.sections.length, 2);
-    assert.strictEqual(doc.sections[0].heading, "Doc > First");
-    assert.strictEqual(doc.sections[1].heading, "Doc > Second");
+    assert.strictEqual(doc.sections[0].headingPath, "Doc > First");
+    assert.strictEqual(doc.sections[1].headingPath, "Doc > Second");
   });
 
   it("should parse H3 subsections", () => {
@@ -64,9 +47,9 @@ Child B content.
 `;
     const doc = parseMarkdown(md, "test.md");
     assert.strictEqual(doc.sections.length, 3);
-    assert.strictEqual(doc.sections[0].heading, "Doc > Parent");
-    assert.strictEqual(doc.sections[1].heading, "Doc > Parent > Child A");
-    assert.strictEqual(doc.sections[2].heading, "Doc > Parent > Child B");
+    assert.strictEqual(doc.sections[0].headingPath, "Doc > Parent");
+    assert.strictEqual(doc.sections[1].headingPath, "Doc > Parent > Child A");
+    assert.strictEqual(doc.sections[2].headingPath, "Doc > Parent > Child B");
   });
 
   it("should include preamble before first H2", () => {
@@ -80,7 +63,7 @@ Section content.
 `;
     const doc = parseMarkdown(md, "test.md");
     assert.strictEqual(doc.sections.length, 2);
-    assert.strictEqual(doc.sections[0].heading, "Doc");
+    assert.strictEqual(doc.sections[0].headingPath, "Doc");
     assert.ok(doc.sections[0].text.includes("Intro content"));
   });
 
@@ -95,7 +78,7 @@ Actual content.
 `;
     const doc = parseMarkdown(md, "test.md");
     assert.strictEqual(doc.sections.length, 1);
-    assert.strictEqual(doc.sections[0].heading, "Doc > Has Content");
+    assert.strictEqual(doc.sections[0].headingPath, "Doc > Has Content");
   });
 
   it("should strip HTML comments", () => {

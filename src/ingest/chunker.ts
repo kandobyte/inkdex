@@ -93,10 +93,7 @@ export function chunkDocument(
     for (const text of textChunks) {
       chunks.push({
         path,
-        fileHeading: doc.fileHeading,
-        heading: section.heading,
-        text: `${section.heading}: ${text}`,
-        metadata: doc.metadata,
+        text: `<context>\n${section.headingPath}\n</context>\n${text}`,
       });
     }
   }

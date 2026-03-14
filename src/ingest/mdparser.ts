@@ -5,12 +5,11 @@ const HEADING_LEVELS = [/^## /m, /^### /m];
 
 export interface MarkdownDocument {
   readonly fileHeading: string;
-  readonly metadata: Record<string, unknown>;
   readonly sections: Section[];
 }
 
 export interface Section {
-  readonly heading: string;
+  readonly headingPath: string;
   readonly text: string;
 }
 
@@ -31,12 +30,12 @@ function parseSections(
   parentHeading: string,
   headingLevels: RegExp[],
 ): Section[] {
-  if (headingLevels.length === 0) return [{ heading: parentHeading, text }];
+  if (headingLevels.length === 0) return [{ headingPath: parentHeading, text }];
 
   const [separator, ...remaining] = headingLevels;
   const parts = text.split(separator);
 
-  if (parts.length <= 1) return [{ heading: parentHeading, text }];
+  if (parts.length <= 1) return [{ headingPath: parentHeading, text }];
 
   const sections: Section[] = [];
   const preamble = parts[0].trim();
@@ -57,12 +56,12 @@ function parseSections(
 
 /** @package */
 export function parseMarkdown(content: string, path: string): MarkdownDocument {
-  const { data: metadata, content: body } = matter(content);
+  const { content: body } = matter(content);
   const fileHeading = extractH1(body) || basename(path, ".md");
   const cleaned = clean(body.replace(/^# .+$/m, ""));
 
-  if (!cleaned) return { fileHeading, metadata, sections: [] };
+  if (!cleaned) return { fileHeading, sections: [] };
 
   const sections = parseSections(cleaned, fileHeading, HEADING_LEVELS);
-  return { fileHeading, metadata, sections };
+  return { fileHeading, sections };
 }
