@@ -1,5 +1,7 @@
 # Inkdex
 
+[![npm](https://img.shields.io/npm/v/inkdex)](https://www.npmjs.com/package/inkdex)
+
 RAG for your markdown docs, exposed over MCP.
 
 ## Tools
@@ -33,7 +35,7 @@ Add to your MCP client configuration:
 |----------|----------|-------------|
 | `DOCS_PATH` | Yes | Path to the directory containing markdown files to index |
 
-To expose docs remotely, use a MCP gateway like [MCPBox](https://github.com/kandobyte/mcpbox).
+Runs over stdio. For remote access, use an MCP gateway ([MCPBox](https://github.com/kandobyte/mcpbox)).
 
 ## How it works
 
