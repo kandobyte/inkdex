@@ -1,8 +1,8 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 import { rankChunksHybrid } from "../../src/search/search.js";
-import type { ChunkRow } from "../../src/types.js";
 import type { FtsResult } from "../../src/store/db.js";
+import type { ChunkRow } from "../../src/types.js";
 
 function makeChunk(
   id: number,
@@ -13,7 +13,6 @@ function makeChunk(
     id,
     path: `doc${id}.md`,
     text: `text ${id}`,
-    metadata: {},
     embedding,
     ...overrides,
   };

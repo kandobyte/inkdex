@@ -1,6 +1,6 @@
 import { cos_sim } from "@huggingface/transformers";
 import type { Embedder } from "../embedder/embedder.js";
-import { getAllChunks, searchFts, type FtsResult } from "../store/db.js";
+import { type FtsResult, getAllChunks, searchFts } from "../store/db.js";
 import type { ChunkRow, SearchResult } from "../types.js";
 
 // Weight for vector vs keyword signal (0 = keyword only, 1 = vector only)
@@ -56,9 +56,10 @@ export function rankChunksHybrid(
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
-    .map(({ id, score }) => {
-      const { path, text } = chunkById.get(id)!;
-      return { path, text, score };
+    .flatMap(({ id, score }) => {
+      const chunk = chunkById.get(id);
+      if (!chunk) return [];
+      return [{ path: chunk.path, text: chunk.text, score }];
     });
 }
 
