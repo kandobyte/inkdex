@@ -1,10 +1,10 @@
 import type { Embedder } from "../embedder/embedder.js";
 import {
   type FtsResult,
-  type VecResult,
   getChunksByIds,
   searchFts,
   searchVec,
+  type VecResult,
 } from "../store/db.js";
 import type { SearchResult } from "../types.js";
 
@@ -44,8 +44,9 @@ export async function search(
   const topRanked = rankByRRF(vecResults, ftsResults).slice(0, limit);
   const chunks = getChunksByIds(topRanked.map((r) => r.id));
   const chunkById = new Map(chunks.map((c) => [c.id, c]));
-  return topRanked.map(({ id, score }) => {
-    const chunk = chunkById.get(id)!;
-    return { path: chunk.path, text: chunk.text, score };
+  return topRanked.flatMap(({ id, score }) => {
+    const chunk = chunkById.get(id);
+    if (!chunk) return [];
+    return [{ path: chunk.path, text: chunk.text, score }];
   });
 }
