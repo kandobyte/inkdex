@@ -20,6 +20,9 @@ on:
       - "tsconfig.json"
       - ".github/workflows/**"
 
+permissions:
+  contents: read
+
 jobs:
   audit:
     name: Security Audit
