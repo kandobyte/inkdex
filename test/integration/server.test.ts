@@ -43,65 +43,13 @@ describe("server integration", () => {
 
     const result = await client.callTool({
       name: "search_docs",
-      arguments: { query: "how to authenticate", limit: 3 },
+      arguments: { query: "how to authenticate" },
     });
 
     assert.ok(result.content);
     assert.ok(Array.isArray(result.content));
     assert.strictEqual(result.content[0].type, "text");
     assert.ok(result.content[0].text.includes("Authentication"));
-
-    await client.close();
-  });
-
-  it("should clamp limit to maximum of 20", async () => {
-    const client = createClient();
-    const transport = createTransport();
-
-    await client.connect(transport);
-
-    const result = await client.callTool({
-      name: "search_docs",
-      arguments: { query: "test", limit: 999 },
-    });
-
-    assert.ok(result.content);
-    assert.ok(Array.isArray(result.content));
-
-    await client.close();
-  });
-
-  it("should clamp limit to minimum of 1", async () => {
-    const client = createClient();
-    const transport = createTransport();
-
-    await client.connect(transport);
-
-    const result = await client.callTool({
-      name: "search_docs",
-      arguments: { query: "test", limit: -5 },
-    });
-
-    assert.ok(result.content);
-    assert.ok(Array.isArray(result.content));
-
-    await client.close();
-  });
-
-  it("should use default limit when not specified", async () => {
-    const client = createClient();
-    const transport = createTransport();
-
-    await client.connect(transport);
-
-    const result = await client.callTool({
-      name: "search_docs",
-      arguments: { query: "install" },
-    });
-
-    assert.ok(result.content);
-    assert.ok(Array.isArray(result.content));
-    assert.strictEqual(result.content[0].type, "text");
 
     await client.close();
   });
@@ -114,7 +62,7 @@ describe("server integration", () => {
 
     const result = await client.callTool({
       name: "search_docs",
-      arguments: { query: "xyzzy", limit: 1 },
+      arguments: { query: "xyzzy" },
     });
 
     assert.ok(result.content);

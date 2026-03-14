@@ -89,12 +89,11 @@ export function openDb(docsPath: string): void {
   };
 
   if (user_version !== SCHEMA_VERSION) {
+    db.exec("DROP TABLE IF EXISTS chunks_fts");
     db.exec("DROP TABLE IF EXISTS chunks");
     db.exec("DROP TABLE IF EXISTS documents");
-    createSchema();
-  } else {
-    createSchema();
   }
+  createSchema();
 
   prepareStatements();
 }

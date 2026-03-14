@@ -8,10 +8,7 @@ import type { Embedder } from "./embedder/embedder.js";
 import { logger } from "./logger.js";
 import { search } from "./search/search.js";
 import { getChunkCount } from "./store/db.js";
-import type { SearchResult } from "./types.js";
 import { getVersion } from "./version.js";
-
-const TOKEN_BUDGET = 8000;
 
 async function createServer(embedder: Embedder): Promise<Server> {
   const server = new Server(
@@ -41,13 +38,6 @@ async function createServer(embedder: Embedder): Promise<Server> {
                 description:
                   "Search query - natural language question or keywords",
               },
-              limit: {
-                type: "number",
-                description: "Maximum number of results to return (1-20)",
-                default: 10,
-                minimum: 1,
-                maximum: 20,
-              },
             },
             required: ["query"],
           },
@@ -62,23 +52,10 @@ async function createServer(embedder: Embedder): Promise<Server> {
     }
 
     const query = String(request.params.arguments?.query || "");
-    const limit = Math.min(
-      Math.max(Number(request.params.arguments?.limit) || 10, 1),
-      20,
-    );
 
-    logger.debug({ query, limit }, "Searching docs");
+    logger.debug({ query }, "Searching docs");
 
-    const countTokens = (text: string) => embedder.tokenize(text).length;
-    const allResults = await search(embedder, query, limit);
-    const results: SearchResult[] = [];
-    let usedTokens = 0;
-    for (const r of allResults) {
-      const tokens = countTokens(r.text);
-      if (usedTokens + tokens > TOKEN_BUDGET && results.length > 0) break;
-      results.push(r);
-      usedTokens += tokens;
-    }
+    const results = await search(embedder, query, 10);
 
     const text = results
       .map((r) => `[${r.path}]\n\n${r.text}`)
