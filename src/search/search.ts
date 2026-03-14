@@ -1,65 +1,34 @@
-import { cos_sim } from "@huggingface/transformers";
 import type { Embedder } from "../embedder/embedder.js";
-import { type FtsResult, getAllChunks, searchFts } from "../store/db.js";
-import type { ChunkRow, SearchResult } from "../types.js";
+import {
+  type FtsResult,
+  type VecResult,
+  getChunksByIds,
+  searchFts,
+  searchVec,
+} from "../store/db.js";
+import type { SearchResult } from "../types.js";
 
-// Weight for vector vs keyword signal (0 = keyword only, 1 = vector only)
-const ALPHA = 0.7;
+const RRF_K = 60;
+const FETCH_LIMIT = 100;
 
-function normalize(scores: Map<number, number>): Map<number, number> {
-  if (scores.size === 0) return scores;
+type RankedResult = { id: number; score: number };
 
-  const values = scores.values();
-  let min = Infinity;
-  let max = -Infinity;
-  for (const v of values) {
-    if (v < min) min = v;
-    if (v > max) max = v;
-  }
-  const range = max - min || 1;
-
-  const result = new Map<number, number>();
-  for (const [id, v] of scores) {
-    result.set(id, (v - min) / range);
-  }
-  return result;
-}
-
-// RelativeScoreFusion: min-max normalise each signal then combine with weighted sum.
-export function rankChunksHybrid(
-  chunks: ChunkRow[],
-  queryEmbedding: number[],
+export function rankByRRF(
+  vecResults: VecResult[],
   ftsResults: FtsResult[],
-  limit: number,
-): SearchResult[] {
-  const chunkById = new Map(chunks.map((c) => [c.id, c]));
-
-  const vectorScores = normalize(
-    new Map(
-      chunks.map((c) => [c.id, Number(cos_sim(queryEmbedding, c.embedding))]),
-    ),
-  );
-  const keywordScores = normalize(
-    new Map(ftsResults.map((r) => [r.id, r.score])),
-  );
-
-  const allIds = new Set([...vectorScores.keys(), ...keywordScores.keys()]);
-
-  return [...allIds]
-    .filter((id) => chunkById.has(id))
-    .map((id) => ({
-      id,
-      score:
-        ALPHA * (vectorScores.get(id) ?? 0) +
-        (1 - ALPHA) * (keywordScores.get(id) ?? 0),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
-    .flatMap(({ id, score }) => {
-      const chunk = chunkById.get(id);
-      if (!chunk) return [];
-      return [{ path: chunk.path, text: chunk.text, score }];
-    });
+): RankedResult[] {
+  const scores = new Map<number, number>();
+  const addRRFScores = (results: Array<{ id: number }>) => {
+    for (let i = 0; i < results.length; i++) {
+      const id = results[i].id;
+      scores.set(id, (scores.get(id) ?? 0) + 1 / (RRF_K + i + 1));
+    }
+  };
+  addRRFScores(vecResults);
+  addRRFScores(ftsResults);
+  return [...scores.entries()]
+    .map(([id, score]) => ({ id, score }))
+    .sort((a, b) => b.score - a.score);
 }
 
 export async function search(
@@ -68,7 +37,15 @@ export async function search(
   limit: number,
 ): Promise<SearchResult[]> {
   const queryEmbedding = await embedder.embed(query);
-  const chunks = getAllChunks();
-  const ftsResults = searchFts(query, chunks.length);
-  return rankChunksHybrid(chunks, queryEmbedding, ftsResults, limit);
+  const [vecResults, ftsResults] = [
+    searchVec(queryEmbedding, FETCH_LIMIT),
+    searchFts(query, FETCH_LIMIT),
+  ];
+  const topRanked = rankByRRF(vecResults, ftsResults).slice(0, limit);
+  const chunks = getChunksByIds(topRanked.map((r) => r.id));
+  const chunkById = new Map(chunks.map((c) => [c.id, c]));
+  return topRanked.map(({ id, score }) => {
+    const chunk = chunkById.get(id)!;
+    return { path: chunk.path, text: chunk.text, score };
+  });
 }

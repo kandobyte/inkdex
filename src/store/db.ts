@@ -4,6 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import type { StatementSync } from "node:sqlite";
 import { DatabaseSync } from "node:sqlite";
+import { load as loadSqliteVec } from "sqlite-vec";
 import type { ChunkRow } from "../types.js";
 
 const STORE_DIR = join(homedir(), ".inkdex");
@@ -13,7 +14,7 @@ export function dbPath(docsPath: string): string {
   const hash = createHash("sha256").update(docsPath).digest("hex").slice(0, 12);
   return join(STORE_DIR, `${hash}.db`);
 }
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const CHUNK_COLUMNS = "id, document_path, text, embedding";
 
@@ -28,6 +29,7 @@ let stmts: {
   getAllChunks: StatementSync;
   countChunks: StatementSync;
   searchFts: StatementSync;
+  searchVec: StatementSync;
 };
 
 function createSchema(): void {
@@ -55,6 +57,17 @@ function createSchema(): void {
       INSERT INTO chunks_fts(chunks_fts, rowid, text)
         VALUES('delete', old.id, old.text);
     END;
+
+    CREATE VIRTUAL TABLE IF NOT EXISTS chunks_vec
+      USING vec0(embedding float[384]);
+
+    CREATE TRIGGER IF NOT EXISTS chunks_vec_insert AFTER INSERT ON chunks BEGIN
+      INSERT INTO chunks_vec(rowid, embedding) VALUES (new.id, new.embedding);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS chunks_vec_delete AFTER DELETE ON chunks BEGIN
+      DELETE FROM chunks_vec WHERE rowid = old.id;
+    END;
   `);
   db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 }
@@ -75,12 +88,16 @@ function prepareStatements(): void {
     searchFts: db.prepare(
       "SELECT rowid, -bm25(chunks_fts) AS score FROM chunks_fts WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts) LIMIT ?",
     ),
+    searchVec: db.prepare(
+      "SELECT rowid, distance FROM chunks_vec WHERE embedding MATCH ? ORDER BY distance LIMIT ?",
+    ),
   };
 }
 
 export function openDb(docsPath: string): void {
   mkdirSync(STORE_DIR, { recursive: true });
-  db = new DatabaseSync(dbPath(docsPath));
+  db = new DatabaseSync(dbPath(docsPath), { allowExtension: true });
+  loadSqliteVec(db);
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");
 
@@ -89,6 +106,7 @@ export function openDb(docsPath: string): void {
   };
 
   if (user_version !== SCHEMA_VERSION) {
+    db.exec("DROP TABLE IF EXISTS chunks_vec");
     db.exec("DROP TABLE IF EXISTS chunks_fts");
     db.exec("DROP TABLE IF EXISTS chunks");
     db.exec("DROP TABLE IF EXISTS documents");
@@ -190,6 +208,35 @@ export function searchFts(query: string, limit: number): FtsResult[] {
     // FTS5 MATCH can fail on edge-case inputs; fall back to empty
     return [];
   }
+}
+
+export interface VecResult {
+  id: number;
+  distance: number;
+}
+
+export function searchVec(embedding: number[], limit: number): VecResult[] {
+  const blob = embeddingToBlob(embedding);
+  const rows = stmts.searchVec.all(blob, limit) as {
+    rowid: number;
+    distance: number;
+  }[];
+  return rows.map((r) => ({ id: r.rowid, distance: r.distance }));
+}
+
+export function getChunksByIds(
+  ids: number[],
+): Array<{ id: number; path: string; text: string }> {
+  if (ids.length === 0) return [];
+  return db
+    .prepare(
+      "SELECT id, document_path AS path, text FROM chunks WHERE id IN (SELECT value FROM json_each(?))",
+    )
+    .all(JSON.stringify(ids)) as Array<{
+    id: number;
+    path: string;
+    text: string;
+  }>;
 }
 
 export function runInTransaction(fn: () => void): void {

@@ -17,12 +17,15 @@ import {
 const TEST_DIR = join(tmpdir(), `inkdex-test-index-${process.pid}`);
 const DOCS_DIR = join(TEST_DIR, "docs");
 
+// vec0 requires exactly 384 floats; use a unit vector
+const MOCK_EMBEDDING = Object.freeze([1.0, ...new Array(383).fill(0)]);
+
 function createMockEmbedder(): Embedder {
   return {
     maxTokens: 256,
     tokenize: (text: string) => text.split(/\s+/).map((_, i) => i),
-    embed: async (_text: string) => [0.1, 0.2, 0.3],
-    embedBatch: async (texts: string[]) => texts.map(() => [0.1, 0.2, 0.3]),
+    embed: async (_text: string) => [...MOCK_EMBEDDING],
+    embedBatch: async (texts: string[]) => texts.map(() => [...MOCK_EMBEDDING]),
   } as unknown as Embedder;
 }
 
