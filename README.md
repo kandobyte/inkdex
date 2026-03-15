@@ -24,7 +24,7 @@ Add to your MCP client configuration:
         "inkdex"
       ],
       "env": {
-        "DOCS_PATH": "/path/to/your/docs"
+        "DOCS_PATH": "/path/to/docs1,/path/to/docs2"
       }
     }
   }
@@ -33,7 +33,7 @@ Add to your MCP client configuration:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `DOCS_PATH` | Yes | Path to the directory containing markdown files to index |
+| `DOCS_PATH` | Yes | Comma-separated path(s) to directories containing markdown files to index |
 
 Runs over stdio. For remote access, use an MCP gateway ([MCPBox](https://github.com/kandobyte/mcpbox)).
 

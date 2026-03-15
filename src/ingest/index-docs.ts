@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { glob, readFile } from "node:fs/promises";
-import { relative } from "node:path";
 import type { Embedder } from "../embedder/embedder.js";
 import { logger } from "../logger.js";
 import {
@@ -38,12 +37,17 @@ export async function indexDocs(
 
   const fileContents = new Map<string, string>();
   for (const file of files) {
-    const key = relative(docsPath, file);
     const content = await readFile(file, "utf-8");
-    fileContents.set(key, content);
+    fileContents.set(file, content);
   }
 
-  const storedHashes = getAllDocumentHashes();
+  const allHashes = getAllDocumentHashes();
+  const storedHashes: Record<string, string> = {};
+  for (const [k, v] of Object.entries(allHashes)) {
+    if (k.startsWith(`${docsPath}/`)) {
+      storedHashes[k] = v;
+    }
+  }
 
   const changedKeys: string[] = [];
   for (const [key, content] of fileContents) {

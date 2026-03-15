@@ -5,7 +5,6 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import {
   closeDb,
-  dbPath,
   getAllChunks,
   getAllDocumentHashes,
   getChunkCount,
@@ -19,7 +18,7 @@ import {
   setDocumentHash,
 } from "../../src/store/db.js";
 
-const TEST_DOCS_PATH = join(tmpdir(), `inkdex-test-db-${process.pid}`);
+const TEST_DB_PATH = join(tmpdir(), `inkdex-test-db-${process.pid}.db`);
 
 // vec0 requires exactly 384 floats. Returns a unit vector with 1.0 at position (i % 384).
 function makeEmbedding(i: number): number[] {
@@ -28,34 +27,17 @@ function makeEmbedding(i: number): number[] {
   return arr;
 }
 
-describe("dbPath", () => {
-  it("should return the same path for the same docs directory", () => {
-    assert.strictEqual(dbPath("/home/user/docs"), dbPath("/home/user/docs"));
-  });
-
-  it("should return different paths for different docs directories", () => {
-    assert.notStrictEqual(
-      dbPath("/home/user/docs-a"),
-      dbPath("/home/user/docs-b"),
-    );
-  });
-
-  it("should end with .db", () => {
-    assert.ok(dbPath("/any/path").endsWith(".db"));
-  });
-});
-
 describe("db operations", () => {
   beforeEach(() => {
-    openDb(TEST_DOCS_PATH);
+    openDb(TEST_DB_PATH);
   });
 
   afterEach(() => {
     closeDb();
     try {
-      rmSync(dbPath(TEST_DOCS_PATH), { force: true });
-      rmSync(`${dbPath(TEST_DOCS_PATH)}-wal`, { force: true });
-      rmSync(`${dbPath(TEST_DOCS_PATH)}-shm`, { force: true });
+      rmSync(TEST_DB_PATH, { force: true });
+      rmSync(`${TEST_DB_PATH}-wal`, { force: true });
+      rmSync(`${TEST_DB_PATH}-shm`, { force: true });
     } catch {
       // ignore cleanup errors
     }

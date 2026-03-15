@@ -7,7 +7,6 @@ import type { Embedder } from "../../src/embedder/embedder.js";
 import { indexDocs } from "../../src/ingest/index-docs.js";
 import {
   closeDb,
-  dbPath,
   getAllChunks,
   getAllDocumentHashes,
   getChunkCount,
@@ -16,6 +15,7 @@ import {
 
 const TEST_DIR = join(tmpdir(), `inkdex-test-index-${process.pid}`);
 const DOCS_DIR = join(TEST_DIR, "docs");
+const TEST_DB_PATH = join(TEST_DIR, "test.db");
 
 // vec0 requires exactly 384 floats; use a unit vector
 const MOCK_EMBEDDING = Object.freeze([1.0, ...new Array(383).fill(0)]);
@@ -32,16 +32,13 @@ function createMockEmbedder(): Embedder {
 describe("indexDocs", () => {
   beforeEach(() => {
     mkdirSync(DOCS_DIR, { recursive: true });
-    openDb(DOCS_DIR);
+    openDb(TEST_DB_PATH);
   });
 
   afterEach(() => {
     closeDb();
     try {
       rmSync(TEST_DIR, { recursive: true, force: true });
-      rmSync(dbPath(DOCS_DIR), { force: true });
-      rmSync(`${dbPath(DOCS_DIR)}-wal`, { force: true });
-      rmSync(`${dbPath(DOCS_DIR)}-shm`, { force: true });
     } catch {
       // ignore cleanup errors
     }
@@ -98,7 +95,7 @@ describe("indexDocs", () => {
 
     const hashes = getAllDocumentHashes();
     assert.strictEqual(Object.keys(hashes).length, 1);
-    assert.ok(hashes["a.md"]);
+    assert.ok(hashes[join(DOCS_DIR, "a.md")]);
   });
 
   it("should index files in subdirectories", async () => {
@@ -116,8 +113,9 @@ describe("indexDocs", () => {
     await indexDocs(createMockEmbedder(), DOCS_DIR);
 
     const hashes = getAllDocumentHashes();
-    assert.ok(hashes["test.md"]);
-    assert.strictEqual(typeof hashes["test.md"], "string");
-    assert.strictEqual(hashes["test.md"].length, 64); // SHA-256 hex
+    const key = join(DOCS_DIR, "test.md");
+    assert.ok(hashes[key]);
+    assert.strictEqual(typeof hashes[key], "string");
+    assert.strictEqual(hashes[key].length, 64); // SHA-256 hex
   });
 });

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -9,10 +8,8 @@ import type { ChunkRow } from "../types.js";
 
 const STORE_DIR = join(homedir(), ".inkdex");
 
-/** @package */
-export function dbPath(docsPath: string): string {
-  const hash = createHash("sha256").update(docsPath).digest("hex").slice(0, 12);
-  return join(STORE_DIR, `${hash}.db`);
+function dbPath(): string {
+  return join(STORE_DIR, "index.db");
 }
 const SCHEMA_VERSION = 3;
 
@@ -94,9 +91,9 @@ function prepareStatements(): void {
   };
 }
 
-export function openDb(docsPath: string): void {
+export function openDb(overridePath?: string): void {
   mkdirSync(STORE_DIR, { recursive: true });
-  db = new DatabaseSync(dbPath(docsPath), { allowExtension: true });
+  db = new DatabaseSync(overridePath ?? dbPath(), { allowExtension: true });
   loadSqliteVec(db);
   db.exec("PRAGMA journal_mode = WAL");
   db.exec("PRAGMA foreign_keys = ON");

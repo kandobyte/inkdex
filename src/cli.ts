@@ -6,7 +6,13 @@ import { Embedder } from "./embedder/embedder.js";
 import { indexDocs } from "./ingest/index-docs.js";
 import { logger } from "./logger.js";
 import { startServer } from "./server.js";
-import { closeDb, openDb } from "./store/db.js";
+import {
+  closeDb,
+  getAllDocumentHashes,
+  openDb,
+  removeDocument,
+  runInTransaction,
+} from "./store/db.js";
 
 process.on("uncaughtException", (error) => {
   logger.error({ error }, "Uncaught exception");
@@ -19,22 +25,60 @@ process.on("unhandledRejection", (reason) => {
 });
 
 async function main(): Promise<void> {
-  const docsPath = process.env.DOCS_PATH;
-  if (!docsPath) {
+  const docsPathEnv = process.env.DOCS_PATH;
+  if (!docsPathEnv) {
     logger.error("DOCS_PATH environment variable is required");
     process.exit(1);
   }
 
-  const resolved = resolve(docsPath);
-  const info = await stat(resolved).catch(() => null);
-  if (!info?.isDirectory()) {
-    logger.error({ path: resolved }, "DOCS_PATH is not a directory");
+  const docsPaths = await Promise.all(
+    docsPathEnv
+      .split(",")
+      .map((p) => p.trim())
+      .filter((p) => p.length > 0)
+      .map(async (p) => {
+        const resolved = resolve(p);
+        const info = await stat(resolved).catch(() => null);
+        if (!info?.isDirectory()) {
+          logger.error(
+            { path: resolved },
+            "DOCS_PATH entry is not a directory",
+          );
+          process.exit(1);
+        }
+        return resolved;
+      }),
+  );
+
+  if (docsPaths.length === 0) {
+    logger.error("DOCS_PATH contains no valid entries");
     process.exit(1);
   }
 
   const embedder = await Embedder.load();
-  openDb(resolved);
-  await indexDocs(embedder, resolved);
+  openDb();
+
+  // Remove documents from dirs no longer in DOCS_PATH
+  const allHashes = getAllDocumentHashes();
+  const staleKeys = Object.keys(allHashes).filter(
+    (key) => !docsPaths.some((dir) => key.startsWith(`${dir}/`)),
+  );
+  if (staleKeys.length > 0) {
+    logger.info(
+      { count: staleKeys.length },
+      "Removing documents from inactive directories",
+    );
+    runInTransaction(() => {
+      for (const key of staleKeys) {
+        removeDocument(key);
+      }
+    });
+  }
+
+  for (const dir of docsPaths) {
+    await indexDocs(embedder, dir);
+  }
+
   await startServer(embedder);
 }
 
