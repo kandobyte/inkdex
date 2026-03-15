@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { glob, readFile } from "node:fs/promises";
+import { basename, relative } from "node:path";
 import type { Embedder } from "../embedder/embedder.js";
 import { logger } from "../logger.js";
 import {
@@ -99,7 +100,8 @@ export async function indexDocs(
   for (const key of changedKeys) {
     const content = fileContents.get(key) as string;
     const doc = parseMarkdown(content, key);
-    const chunks = chunkDocument(doc, key, chunkOptions);
+    const source = `${basename(docsPath)}/${relative(docsPath, key)}`;
+    const chunks = chunkDocument(doc, key, source, chunkOptions);
 
     logger.debug({ path: key, chunks: chunks.length }, "Embedding chunks");
     const embeddings = await embedder.embedBatch(chunks.map((c) => c.text));
@@ -109,7 +111,7 @@ export async function indexDocs(
       setDocumentHash(key, hashContent(content));
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
-        insertChunk(chunk.path, chunk.text, embeddings[i]);
+        insertChunk(chunk.path, chunk.source, chunk.text, embeddings[i]);
       }
     });
 

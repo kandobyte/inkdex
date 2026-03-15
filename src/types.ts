@@ -1,5 +1,6 @@
 export interface BaseChunk {
   path: string;
+  source: string;
   text: string;
 }
 

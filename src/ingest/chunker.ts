@@ -77,6 +77,7 @@ function hardSplit(
 export function chunkDocument(
   doc: MarkdownDocument,
   path: string,
+  source: string,
   options: ChunkOptions,
 ): BaseChunk[] {
   const { maxTokens, countTokens } = options;
@@ -93,6 +94,7 @@ export function chunkDocument(
     for (const text of textChunks) {
       chunks.push({
         path,
+        source,
         text: `<context>\n${section.headingPath}\n</context>\n${text}`,
       });
     }

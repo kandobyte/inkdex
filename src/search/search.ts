@@ -47,6 +47,8 @@ export async function search(
   return topRanked.flatMap(({ id, score }) => {
     const chunk = chunkById.get(id);
     if (!chunk) return [];
-    return [{ path: chunk.path, text: chunk.text, score }];
+    return [
+      { path: chunk.path, source: chunk.source, text: chunk.text, score },
+    ];
   });
 }

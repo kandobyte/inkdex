@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/inkdex)](https://www.npmjs.com/package/inkdex)
 
-RAG for your markdown docs, exposed over MCP.
+RAG for your markdown docs, exposed over MCP. Local embeddings, zero config.
 
 ## Tools
 
@@ -39,6 +39,15 @@ Runs over stdio. For remote access, use an MCP gateway ([MCPBox](https://github.
 
 ## How it works
 
-Markdown files are parsed by heading structure into ~200-token chunks, each prefixed with its heading path (e.g. `API Reference > Authentication`). Chunks are embedded locally using `all-MiniLM-L6-v2` and stored in SQLite.
+Markdown files are split into chunks by heading structure and paragraph boundaries. Chunks are embedded locally using `all-MiniLM-L6-v2` and stored in SQLite.
 
-Search combines vector similarity and BM25 full-text matching, fused with [Reciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf).
+Search ranks results using both vector similarity and BM25 full-text matching, combined via [Reciprocal Rank Fusion](https://cormack.uwaterloo.ca/cormacksigir09-rrf.pdf).
+
+Results include the source, context, and text:
+```
+[mira/authentication.md]
+<context>
+Authentication > Token Expiration and Refresh
+</context>
+The refresh token expires...
+```

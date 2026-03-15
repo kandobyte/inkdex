@@ -11,9 +11,9 @@ const STORE_DIR = join(homedir(), ".inkdex");
 function dbPath(): string {
   return join(STORE_DIR, "index.db");
 }
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
-const CHUNK_COLUMNS = "id, document_path, text, embedding";
+const CHUNK_COLUMNS = "id, document_path, source, text, embedding";
 
 let db: DatabaseSync;
 
@@ -38,6 +38,7 @@ function createSchema(): void {
     CREATE TABLE IF NOT EXISTS chunks (
       id INTEGER PRIMARY KEY,
       document_path TEXT NOT NULL REFERENCES documents(path),
+      source TEXT NOT NULL,
       text TEXT NOT NULL,
       embedding BLOB NOT NULL
     );
@@ -78,7 +79,7 @@ function prepareStatements(): void {
     deleteChunksByDoc: db.prepare("DELETE FROM chunks WHERE document_path = ?"),
     deleteDoc: db.prepare("DELETE FROM documents WHERE path = ?"),
     insertChunk: db.prepare(
-      "INSERT INTO chunks (document_path, text, embedding) VALUES (?, ?, ?)",
+      "INSERT INTO chunks (document_path, source, text, embedding) VALUES (?, ?, ?, ?)",
     ),
     getAllChunks: db.prepare(`SELECT ${CHUNK_COLUMNS} FROM chunks`),
     countChunks: db.prepare("SELECT COUNT(*) as count FROM chunks"),
@@ -149,6 +150,7 @@ function blobToEmbedding(blob: Uint8Array): number[] {
 interface RawChunkRow {
   id: number;
   document_path: string;
+  source: string;
   text: string;
   embedding: Uint8Array;
 }
@@ -157,6 +159,7 @@ function toChunkRow(row: RawChunkRow): ChunkRow {
   return {
     id: row.id,
     path: row.document_path,
+    source: row.source,
     text: row.text,
     embedding: blobToEmbedding(row.embedding),
   };
@@ -164,10 +167,11 @@ function toChunkRow(row: RawChunkRow): ChunkRow {
 
 export function insertChunk(
   documentPath: string,
+  source: string,
   text: string,
   embedding: number[],
 ): void {
-  stmts.insertChunk.run(documentPath, text, embeddingToBlob(embedding));
+  stmts.insertChunk.run(documentPath, source, text, embeddingToBlob(embedding));
 }
 
 export function getAllChunks(): ChunkRow[] {
@@ -223,15 +227,16 @@ export function searchVec(embedding: number[], limit: number): VecResult[] {
 
 export function getChunksByIds(
   ids: number[],
-): Array<{ id: number; path: string; text: string }> {
+): Array<{ id: number; path: string; source: string; text: string }> {
   if (ids.length === 0) return [];
   return db
     .prepare(
-      "SELECT id, document_path AS path, text FROM chunks WHERE id IN (SELECT value FROM json_each(?))",
+      "SELECT id, document_path AS path, source, text FROM chunks WHERE id IN (SELECT value FROM json_each(?))",
     )
     .all(JSON.stringify(ids)) as Array<{
     id: number;
     path: string;
+    source: string;
     text: string;
   }>;
 }

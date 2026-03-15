@@ -11,7 +11,7 @@ const defaultOptions: ChunkOptions = {
 };
 
 function chunk(md: string, path = "test.md", options = defaultOptions) {
-  return chunkDocument(parseMarkdown(md, path), path, options);
+  return chunkDocument(parseMarkdown(md, path), path, `docs/${path}`, options);
 }
 
 function contextPrefix(headingPath: string): string {

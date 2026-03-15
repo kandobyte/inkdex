@@ -1,4 +1,3 @@
-import { basename } from "node:path";
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -59,7 +58,7 @@ async function createServer(embedder: Embedder): Promise<Server> {
     const results = await search(embedder, query, 10);
 
     const text = results
-      .map((r) => `[${basename(r.path)}]\n\n${r.text}`)
+      .map((r) => `[${r.source}]\n\n${r.text}`)
       .join("\n\n---\n\n");
 
     return {

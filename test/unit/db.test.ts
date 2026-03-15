@@ -67,7 +67,7 @@ describe("db operations", () => {
 
   it("should insert and retrieve chunks", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "Some text", makeEmbedding(0));
+    insertChunk("doc.md", "test/doc.md", "Some text", makeEmbedding(0));
 
     const chunks = getAllChunks();
     assert.strictEqual(chunks.length, 1);
@@ -78,7 +78,7 @@ describe("db operations", () => {
   it("should round-trip embeddings through blob conversion", () => {
     setDocumentHash("doc.md", "hash1");
     const embedding = makeEmbedding(0);
-    insertChunk("doc.md", "text", embedding);
+    insertChunk("doc.md", "test/doc.md", "text", embedding);
 
     const chunks = getAllChunks();
     assert.strictEqual(chunks[0].embedding.length, embedding.length);
@@ -92,14 +92,14 @@ describe("db operations", () => {
 
   it("should count chunks correctly", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "text1", makeEmbedding(0));
-    insertChunk("doc.md", "text2", makeEmbedding(1));
+    insertChunk("doc.md", "test/doc.md", "text1", makeEmbedding(0));
+    insertChunk("doc.md", "test/doc.md", "text2", makeEmbedding(1));
     assert.strictEqual(getChunkCount(), 2);
   });
 
   it("should remove document and its chunks", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "text", makeEmbedding(0));
+    insertChunk("doc.md", "test/doc.md", "text", makeEmbedding(0));
 
     removeDocument("doc.md");
     assert.strictEqual(getChunkCount(), 0);
@@ -109,8 +109,8 @@ describe("db operations", () => {
   it("should only remove chunks for the specified document", () => {
     setDocumentHash("a.md", "hash1");
     setDocumentHash("b.md", "hash2");
-    insertChunk("a.md", "text-a", makeEmbedding(0));
-    insertChunk("b.md", "text-b", makeEmbedding(1));
+    insertChunk("a.md", "test/a.md", "text-a", makeEmbedding(0));
+    insertChunk("b.md", "test/b.md", "text-b", makeEmbedding(1));
 
     removeDocument("a.md");
     assert.strictEqual(getChunkCount(), 1);
@@ -119,8 +119,13 @@ describe("db operations", () => {
 
   it("should search via FTS", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "the quick brown fox", makeEmbedding(0));
-    insertChunk("doc.md", "lazy sleeping dog", makeEmbedding(1));
+    insertChunk(
+      "doc.md",
+      "test/doc.md",
+      "the quick brown fox",
+      makeEmbedding(0),
+    );
+    insertChunk("doc.md", "test/doc.md", "lazy sleeping dog", makeEmbedding(1));
 
     const results = searchFts("quick fox", 10);
     assert.ok(results.length > 0);
@@ -131,7 +136,7 @@ describe("db operations", () => {
 
   it("should return empty for FTS with no matches", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "hello world", makeEmbedding(0));
+    insertChunk("doc.md", "test/doc.md", "hello world", makeEmbedding(0));
 
     const results = searchFts("zzzznotfound", 10);
     assert.strictEqual(results.length, 0);
@@ -144,7 +149,7 @@ describe("db operations", () => {
 
   it("should handle FTS queries with special characters", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "some text", makeEmbedding(0));
+    insertChunk("doc.md", "test/doc.md", "some text", makeEmbedding(0));
 
     const results = searchFts('AND OR NOT "quotes"', 10);
     assert.ok(Array.isArray(results));
@@ -153,7 +158,7 @@ describe("db operations", () => {
   it("should commit transaction on success", () => {
     setDocumentHash("doc.md", "hash1");
     runInTransaction(() => {
-      insertChunk("doc.md", "text", makeEmbedding(0));
+      insertChunk("doc.md", "test/doc.md", "text", makeEmbedding(0));
     });
     assert.strictEqual(getChunkCount(), 1);
   });
@@ -162,7 +167,7 @@ describe("db operations", () => {
     setDocumentHash("doc.md", "hash1");
     assert.throws(() => {
       runInTransaction(() => {
-        insertChunk("doc.md", "text", makeEmbedding(0));
+        insertChunk("doc.md", "test/doc.md", "text", makeEmbedding(0));
         throw new Error("deliberate failure");
       });
     });
@@ -172,7 +177,7 @@ describe("db operations", () => {
   it("should find exact match via vector search with distance ~0", () => {
     setDocumentHash("doc.md", "hash1");
     const embedding = makeEmbedding(0);
-    insertChunk("doc.md", "text", embedding);
+    insertChunk("doc.md", "test/doc.md", "text", embedding);
 
     const results = searchVec(embedding, 1);
     assert.strictEqual(results.length, 1);
@@ -186,8 +191,8 @@ describe("db operations", () => {
   it("should rank closer vectors first in vector search", () => {
     setDocumentHash("doc.md", "hash1");
     // Two orthogonal unit vectors; query matches chunk 0 exactly
-    insertChunk("doc.md", "text-a", makeEmbedding(0));
-    insertChunk("doc.md", "text-b", makeEmbedding(1));
+    insertChunk("doc.md", "test/doc.md", "text-a", makeEmbedding(0));
+    insertChunk("doc.md", "test/doc.md", "text-b", makeEmbedding(1));
 
     const results = searchVec(makeEmbedding(0), 2);
     assert.strictEqual(results.length, 2);
@@ -204,9 +209,9 @@ describe("db operations", () => {
 
   it("should fetch chunks by ids", () => {
     setDocumentHash("doc.md", "hash1");
-    insertChunk("doc.md", "alpha", makeEmbedding(0));
-    insertChunk("doc.md", "beta", makeEmbedding(1));
-    insertChunk("doc.md", "gamma", makeEmbedding(2));
+    insertChunk("doc.md", "test/doc.md", "alpha", makeEmbedding(0));
+    insertChunk("doc.md", "test/doc.md", "beta", makeEmbedding(1));
+    insertChunk("doc.md", "test/doc.md", "gamma", makeEmbedding(2));
 
     const all = getAllChunks();
     const ids = [all[0].id, all[2].id];
