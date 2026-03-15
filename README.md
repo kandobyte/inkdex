@@ -35,7 +35,7 @@ Add to your MCP client configuration:
 |----------|----------|-------------|
 | `DOCS_PATH` | Yes | Comma-separated path(s) to directories containing markdown files to index |
 
-Runs over stdio. For remote access, use an MCP gateway ([MCPBox](https://github.com/kandobyte/mcpbox)).
+Runs over stdio. For remote access, use an MCP gateway ([MCPBox](https://github.com/anton-lunden/mcpbox)).
 
 ## How it works
 
