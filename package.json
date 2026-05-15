@@ -1,7 +1,7 @@
 {
   "name": "inkdex",
   "version": "0.4.0",
-  "description": "MCP server that indexes markdown docs and exposes hybrid semantic search for LLM context retrieval.",
+  "description": "MCP server for semantic search over markdown docs",
   "license": "Apache-2.0",
   "author": "Anton Lundén",
   "repository": {
