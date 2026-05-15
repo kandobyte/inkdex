@@ -8,7 +8,7 @@ export interface MarkdownDocument {
   readonly sections: Section[];
 }
 
-export interface Section {
+interface Section {
   readonly headingPath: string;
   readonly text: string;
 }
