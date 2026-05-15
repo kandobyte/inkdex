@@ -10,7 +10,6 @@
     "rootDir": "./src",
     "declaration": true,
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*"],

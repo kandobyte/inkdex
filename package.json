@@ -6,10 +6,10 @@
   "author": "Anton Lundén",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anton-lunden/inkdex"
+    "url": "https://github.com/antonlunden/inkdex"
   },
   "bugs": {
-    "url": "https://github.com/anton-lunden/inkdex/issues"
+    "url": "https://github.com/antonlunden/inkdex/issues"
   },
   "files": [
     "dist"
@@ -44,7 +44,7 @@
     "rag"
   ],
   "dependencies": {
-    "@huggingface/transformers": "^3.8.1",
+    "@huggingface/transformers": "^4.2.0",
     "@modelcontextprotocol/sdk": "^1.25.3",
     "gray-matter": "^4.0.3",
     "sqlite-vec": "alpha"
@@ -54,6 +54,6 @@
     "@types/node": "^25.1.0",
     "knip": "^5.86.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   }
 }

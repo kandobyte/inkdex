@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/inkdex)](https://www.npmjs.com/package/inkdex)
 
-RAG for your markdown docs, exposed over MCP. Local embeddings, zero config.
+MCP server for semantic search over markdown docs.
 
 ## Tools
 
@@ -34,8 +34,6 @@ Add to your MCP client configuration:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DOCS_PATH` | Yes | Path to the directory containing markdown files to index |
-
-Runs over stdio. For remote access, use an MCP gateway ([MCPBox](https://github.com/anton-lunden/mcpbox)).
 
 ## How it works
 
