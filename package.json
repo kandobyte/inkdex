@@ -6,10 +6,10 @@
   "author": "Anton Lundén",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anton-lunden/inkdex"
+    "url": "https://github.com/antonlunden/inkdex"
   },
   "bugs": {
-    "url": "https://github.com/anton-lunden/inkdex/issues"
+    "url": "https://github.com/antonlunden/inkdex/issues"
   },
   "files": [
     "dist"
